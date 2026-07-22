@@ -49,11 +49,11 @@ export class ApiController {
       const id = doc.offerId;
       
       const [last, lastAny, latest, sparkDocs] = await Promise.all([
-        this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: -1 }).lean() as any,
-        this.snapshots.findOne({ offerId: id }).sort({ ts: -1 }).lean() as any,
-        this.latest.findOne({ offerId: id }).lean() as any,
-        this.snapshots.find({ offerId: id, parseOk: true }).sort({ ts: -1 }).limit(20).lean() as any[]
-      ]);
+        this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: -1 }).lean().exec(),
+        this.snapshots.findOne({ offerId: id }).sort({ ts: -1 }).lean().exec(),
+        this.latest.findOne({ offerId: id }).lean().exec(),
+        this.snapshots.find({ offerId: id, parseOk: true }).sort({ ts: -1 }).limit(20).lean().exec()
+      ]) as [any, any, any, any[]];
 
       if (!last || !latest) return null; // ще жодного вдалого парсу
 
@@ -61,9 +61,9 @@ export class ApiController {
 
       // приріст за добу: різниця з найпізнішим снапшотом старшим за 24 год (або найпершим)
       const dayAgo = new Date(Date.now() - 24 * 3600_000);
-      let base = await this.snapshots.findOne({ offerId: id, parseOk: true, ts: { $lte: dayAgo } }).sort({ ts: -1 }).lean() as any;
+      let base = await this.snapshots.findOne({ offerId: id, parseOk: true, ts: { $lte: dayAgo } }).sort({ ts: -1 }).lean().exec() as any;
       if (!base) {
-        base = await this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: 1 }).lean() as any;
+        base = await this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: 1 }).lean().exec() as any;
       }
       
       const today = Math.max(0, last.total - (base?.total ?? last.total));
@@ -98,9 +98,10 @@ export class ApiController {
     });
 
     const results = await Promise.all(outPromises);
-    const out = results.filter(Boolean); // Видаляємо null-и (де не було даних)
+    const out = results.filter((r) => r !== null);
 
     for (const res of out) {
+      if (!res) continue;
       const d = new Date(res.fetchedAt);
       if (d > updatedAt) updatedAt = d;
     }
