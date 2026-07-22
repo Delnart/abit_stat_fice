@@ -61,12 +61,7 @@ export default function CalcPage() {
         <Header />
         <div className="view-in">
           <section className="panel" style={{ marginBottom: 16 }}>
-            <div className="panel-title" style={{ marginBottom: 4 }}>Калькулятор конкурсного балу</div>
-            <div style={{ color: 'var(--t3)', fontSize: 12.5, marginBottom: 14 }}>
-              НМТ-2026, коефіцієнти ЄДЕБО для всіх пропозицій ФІОТ.
-              КБ = (К1·П1 + К2·П2 + К3·П3 + К4·П4) ÷ (К1 + К2 + К3 + (К4max + К4)/2), де К4max = {K4MAX}.
-              Мінімум 100 з кожного предмета.
-            </div>
+            <div className="panel-title" style={{ marginBottom: 14 }}>Калькулятор конкурсного балу</div>
 
             <div className="calc-grid">
               {REQUIRED.map((s) => (
