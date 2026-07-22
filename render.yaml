@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: delnart-fiot-abit-api
+    name: abit-fice-api
     runtime: node
     plan: free
     rootDir: apps/api
@@ -18,8 +18,9 @@ services:
       - key: OFFER_IDS
         value: 1586544,1639860,1591057,1588416,1630258,1586573,1600953,1671590,1601038,1613137,1600952,1588884
 
-  - type: static
-    name: delnart-fiot-abit-web
+  - type: web
+    name: abit-fice
+    runtime: static
     rootDir: apps/web
     buildCommand: npm ci && npm run build
     staticPublishPath: out
@@ -28,6 +29,6 @@ services:
       - key: NODE_VERSION
         value: 22
       - key: NEXT_PUBLIC_API_URL
-        value: https://delnart-fiot-abit-api.onrender.com
+        value: https://abit-fice-api.onrender.com
       - key: NEXT_PUBLIC_OFFER_IDS
         value: 1586544,1639860,1591057,1588416,1630258,1586573,1600953,1671590,1601038,1613137,1600952,1588884
