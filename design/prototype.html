@@ -1,0 +1,970 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вступ ФІОТ — статистика в реальному часі</title>
+<style>
+/* ============ tokens ============ */
+:root{
+  color-scheme:dark;
+  --bg:#0e1116; --card:#151a21; --card-2:#1a212b; --card-3:#202835;
+  --line:rgba(226,238,255,.09); --line-strong:rgba(226,238,255,.17);
+  --ink:#e9eef5; --ink-2:#9aa6b4; --ink-3:#6d7887;
+  --accent:#4596ec; --accent-ink:#6cb0f5; --accent-soft:rgba(69,150,236,.13); --accent-soft-2:rgba(69,150,236,.22);
+  --you:#d55181; --you-soft:rgba(213,81,129,.16);
+  --good:#2eb84c; --good-soft:rgba(46,184,76,.12);
+  --warn:#fab219; --warn-soft:rgba(250,178,25,.12);
+  --bad:#e66767;
+  --gridline:#222a35; --track:rgba(69,150,236,.16);
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.5);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,"Roboto Mono",monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme:light;
+    --bg:#f2f5f9; --card:#ffffff; --card-2:#f5f7fa; --card-3:#eaeef4;
+    --line:rgba(21,30,44,.10); --line-strong:rgba(21,30,44,.2);
+    --ink:#151a20; --ink-2:#4e5866; --ink-3:#818c99;
+    --accent:#2a78d6; --accent-ink:#1e63b8; --accent-soft:rgba(42,120,214,.10); --accent-soft-2:rgba(42,120,214,.2);
+    --you:#c73e72; --you-soft:rgba(199,62,114,.12);
+    --good:#0a7d2c; --good-soft:rgba(10,125,44,.10);
+    --warn:#a36a00; --warn-soft:rgba(250,178,25,.16);
+    --bad:#c23434;
+    --gridline:#e3e8ef; --track:rgba(42,120,214,.14);
+    --shadow:0 1px 2px rgba(21,30,44,.07), 0 8px 24px -14px rgba(21,30,44,.18);
+  }
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f2f5f9; --card:#ffffff; --card-2:#f5f7fa; --card-3:#eaeef4;
+  --line:rgba(21,30,44,.10); --line-strong:rgba(21,30,44,.2);
+  --ink:#151a20; --ink-2:#4e5866; --ink-3:#818c99;
+  --accent:#2a78d6; --accent-ink:#1e63b8; --accent-soft:rgba(42,120,214,.10); --accent-soft-2:rgba(42,120,214,.2);
+  --you:#c73e72; --you-soft:rgba(199,62,114,.12);
+  --good:#0a7d2c; --good-soft:rgba(10,125,44,.10);
+  --warn:#a36a00; --warn-soft:rgba(250,178,25,.16);
+  --bad:#c23434;
+  --gridline:#e3e8ef; --track:rgba(42,120,214,.14);
+  --shadow:0 1px 2px rgba(21,30,44,.07), 0 8px 24px -14px rgba(21,30,44,.18);
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1116; --card:#151a21; --card-2:#1a212b; --card-3:#202835;
+  --line:rgba(226,238,255,.09); --line-strong:rgba(226,238,255,.17);
+  --ink:#e9eef5; --ink-2:#9aa6b4; --ink-3:#6d7887;
+  --accent:#4596ec; --accent-ink:#6cb0f5; --accent-soft:rgba(69,150,236,.13); --accent-soft-2:rgba(69,150,236,.22);
+  --you:#d55181; --you-soft:rgba(213,81,129,.16);
+  --good:#2eb84c; --good-soft:rgba(46,184,76,.12);
+  --warn:#fab219; --warn-soft:rgba(250,178,25,.12);
+  --bad:#e66767;
+  --gridline:#222a35; --track:rgba(69,150,236,.16);
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.5);
+}
+
+/* ============ base ============ */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:15px/1.45 var(--sans);
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s, color .25s;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+input{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 96px}
+@media (max-width:640px){ .wrap{padding:0 12px 120px} }
+
+/* ============ header ============ */
+header.top{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:20px 0 14px;
+}
+.brand{display:flex;flex-direction:column;gap:2px;margin-right:auto}
+.brand h1{font-size:19px;font-weight:650;margin:0;letter-spacing:-.01em}
+.brand small{color:var(--ink-3);font-size:12.5px}
+.iconbtn{
+  width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--ink-2);
+  background:var(--card);
+}
+.iconbtn:hover{border-color:var(--line-strong);color:var(--ink)}
+
+/* status row */
+.statusbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;border:1px solid var(--line);border-radius:12px;
+  background:var(--card);box-shadow:var(--shadow);
+  margin-bottom:18px;
+}
+.livepill{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:11px;font-weight:700;letter-spacing:.08em;
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:4px 10px;border-radius:99px;
+}
+.livepill.warn{color:var(--warn);background:var(--warn-soft)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);position:relative;flex:none}
+.livepill.warn .dot{background:var(--warn)}
+.dot::after{
+  content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1.5px solid currentColor;opacity:0;
+  animation:pulse 2.4s ease-out infinite;
+}
+@keyframes pulse{ 0%{transform:scale(.4);opacity:.7} 70%{transform:scale(1.15);opacity:0} 100%{opacity:0} }
+.statustext{color:var(--ink-2);font-size:13.5px}
+.statustext b{color:var(--ink);font-weight:600}
+.statusnote{color:var(--ink-3);font-size:12px;margin-left:auto}
+@media (max-width:720px){ .statusnote{display:none} }
+
+/* mode badge + tooltip */
+.tipwrap{position:relative;display:inline-flex}
+.badge-mode{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;
+  border:1px dashed var(--line-strong);color:var(--ink-2);
+}
+.badge-mode.fact{border-style:solid;color:var(--good);background:var(--good-soft);border-color:transparent}
+.tip{
+  position:absolute;top:calc(100% + 8px);right:0;
+  width:min(280px,72vw);padding:10px 12px;border-radius:10px;
+  background:var(--card-3);border:1px solid var(--line-strong);
+  color:var(--ink-2);font-size:12.5px;line-height:1.5;font-weight:400;
+  box-shadow:var(--shadow);z-index:40;
+  opacity:0;visibility:hidden;transition:opacity .15s;
+  text-align:left;
+}
+.tipwrap:hover .tip,.tipwrap:focus-within .tip{opacity:1;visibility:visible}
+
+/* stale banner */
+.banner{
+  display:none;align-items:flex-start;gap:10px;
+  border:1px solid transparent;border-radius:12px;
+  background:var(--warn-soft);color:var(--ink);
+  padding:12px 14px;margin-bottom:16px;font-size:13.5px;
+}
+.banner svg{flex:none;margin-top:1px;color:var(--warn)}
+.banner b{font-weight:650}
+.banner span{color:var(--ink-2)}
+[data-state="stale"] .banner{display:flex}
+
+/* ============ dashboard grid ============ */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+@media (max-width:700px){ .grid{grid-template-columns:1fr} }
+
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:16px 16px 12px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:12px;
+  text-align:left;transition:border-color .15s, translate .15s;
+  position:relative;
+}
+.card:hover{border-color:var(--accent-soft-2)}
+.card:hover .cardgo{opacity:1}
+.cardhead{display:flex;align-items:flex-start;gap:10px}
+.cardhead .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cardhead .code{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--accent-ink)}
+.cardhead h3{margin:0;font-size:15px;font-weight:650;line-height:1.3;text-wrap:balance}
+.badge-b{
+  margin-left:auto;flex:none;font-size:11px;font-weight:650;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:6px;padding:3px 7px;
+}
+.cardgo{
+  position:absolute;right:14px;bottom:12px;color:var(--ink-3);opacity:0;transition:opacity .15s;
+  font-size:12px;display:flex;align-items:center;gap:4px;
+}
+@media (hover:none){ .cardgo{opacity:.7} }
+
+.bignum-row{display:flex;align-items:flex-end;gap:14px}
+.bignum{display:flex;flex-direction:column;gap:2px}
+.bignum .v{font-size:34px;font-weight:600;line-height:1;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.bignum .l{font-size:12px;color:var(--ink-3)}
+.delta{font-size:12.5px;font-weight:600;color:var(--good);display:flex;align-items:center;gap:3px;padding-bottom:2px}
+.delta.zero{color:var(--ink-3)}
+.spark{margin-left:auto;color:var(--accent);flex:none}
+.tickup{position:absolute;font-size:12px;font-weight:700;color:var(--good);animation:floatup 1.2s ease-out forwards;pointer-events:none}
+@keyframes floatup{ from{opacity:0;translate:0 6px} 25%{opacity:1} to{opacity:0;translate:0 -14px} }
+
+.seatline{
+  font-size:12.5px;color:var(--ink-3);
+  border-top:1px solid var(--line);padding-top:10px;
+  display:flex;gap:12px;flex-wrap:wrap;
+}
+.seatline b{color:var(--ink-2);font-weight:600}
+
+.cats{display:flex;flex-direction:column}
+.catrow{
+  display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;
+  padding:7px 0;border-top:1px solid var(--line);
+}
+.catrow:first-child{border-top:none}
+.catname{font-size:13px;color:var(--ink-2)}
+.meterwrap{display:flex;align-items:center;gap:8px;justify-self:end}
+.meter{width:64px;height:5px;border-radius:3px;background:var(--track);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .6s ease}
+.meter.full i{background:var(--accent)}
+.mtext{font-size:12px;color:var(--ink-3);min-width:44px;text-align:right}
+.cutoff{font-size:14px;font-weight:600;min-width:74px;text-align:right}
+.cutoff .na{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11.5px;font-weight:600;color:var(--good);
+  background:var(--good-soft);border-radius:6px;padding:3px 7px;
+}
+.cutoff .na svg{flex:none}
+
+/* card error mark */
+.errmark{
+  display:none;position:absolute;top:12px;right:12px;
+  font-size:11px;font-weight:600;color:var(--warn);
+  background:var(--warn-soft);border-radius:6px;padding:3px 8px;
+  align-items:center;gap:5px;
+}
+[data-state="error"] .card[data-offer="1589234"] .errmark{display:inline-flex}
+[data-state="error"] .card[data-offer="1589234"] .badge-b{visibility:hidden}
+
+/* ============ skeleton ============ */
+.sk{display:none}
+[data-state="skeleton"] .sk{display:grid}
+[data-state="skeleton"] .real{display:none!important}
+.skcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.shim{border-radius:6px;background:linear-gradient(100deg,var(--card-2) 40%,var(--card-3) 50%,var(--card-2) 60%);background-size:220% 100%;animation:shim 1.4s linear infinite}
+@keyframes shim{ from{background-position:130% 0} to{background-position:-90% 0} }
+.shim.h18{height:18px;width:60%} .shim.h34{height:34px;width:45%}
+.shim.h10a{height:10px;width:88%} .shim.h10b{height:10px;width:74%} .shim.h10c{height:10px;width:81%}
+
+/* ============ empty ============ */
+.empty{display:none;border:1px dashed var(--line-strong);border-radius:14px;padding:56px 24px;text-align:center}
+[data-state="empty"] .empty{display:block}
+[data-state="empty"] .real{display:none!important}
+.empty h2{margin:0 0 8px;font-size:20px;font-weight:650}
+.empty p{margin:0 auto;max-width:44ch;color:var(--ink-2);font-size:14px}
+.empty .chip{
+  display:inline-flex;margin-top:18px;font-size:13px;font-weight:600;
+  color:var(--accent-ink);background:var(--accent-soft);border-radius:99px;padding:6px 14px;
+}
+
+/* ============ offer page ============ */
+.backrow{display:flex;align-items:center;gap:8px;margin:2px 0 14px}
+.back{
+  display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:9px;padding:6px 12px;background:var(--card);
+}
+.back:hover{color:var(--ink);border-color:var(--line-strong)}
+.offerhead{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
+.offerhead .code{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--accent-ink)}
+.offerhead h2{margin:0;font-size:24px;font-weight:650;letter-spacing:-.01em;text-wrap:balance}
+.offerhead .sub{color:var(--ink-3);font-size:13px}
+
+.metricrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.metric .l{font-size:12px;color:var(--ink-3);margin-bottom:4px}
+.metric .v{font-size:22px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.metric .v small{font-size:13px;color:var(--ink-3);font-weight:500}
+.metric .d{font-size:12px;color:var(--good);font-weight:600;margin-top:2px}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+.panelhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.panelhead h3{margin:0;font-size:15px;font-weight:650}
+.panelhead .hint{color:var(--ink-3);font-size:12.5px}
+.seg{display:inline-flex;background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:2px;margin-left:auto}
+.seg button{
+  font-size:12.5px;font-weight:600;color:var(--ink-2);
+  padding:5px 12px;border-radius:7px;
+}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.chartbox{position:relative;overflow-x:auto}
+.chartbox svg{display:block;width:100%;height:auto;min-width:520px}
+.charttip{
+  position:absolute;pointer-events:none;z-index:30;
+  background:var(--card-3);border:1px solid var(--line-strong);border-radius:9px;
+  padding:7px 10px;font-size:12px;color:var(--ink-2);box-shadow:var(--shadow);
+  opacity:0;transition:opacity .1s;white-space:nowrap;
+}
+.charttip b{color:var(--ink);font-weight:650}
+.charttip .num{font-weight:650}
+
+/* calculator */
+.calcrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.calcrow label{font-size:13px;color:var(--ink-2)}
+.scoreinput{
+  width:120px;background:var(--card-2);border:1px solid var(--line-strong);border-radius:9px;
+  padding:8px 12px;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px;
+}
+.scoreinput:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.calcout{font-size:13.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.calcout b{color:var(--ink);font-weight:650}
+.calcout .pos{color:var(--good);font-weight:600}
+.calcout .neg{color:var(--warn);font-weight:600}
+.youkey{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3)}
+.youkey i{width:10px;height:3px;border-radius:2px;background:var(--you);display:inline-block}
+
+/* ============ table ============ */
+.tabletools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.search{
+  flex:1;min-width:180px;max-width:320px;display:flex;align-items:center;gap:8px;
+  background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;
+}
+.search svg{color:var(--ink-3);flex:none}
+.search input{background:none;border:none;outline:none;width:100%;font-size:13.5px}
+.search input::placeholder{color:var(--ink-3)}
+.ftoggle{
+  font-size:12.5px;font-weight:600;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:99px;padding:6px 12px;
+}
+.ftoggle[aria-pressed="true"]{color:var(--accent-ink);background:var(--accent-soft);border-color:transparent}
+.tscroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
+table.rank{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+.rank th{
+  position:sticky;top:0;z-index:10;background:var(--card);
+  text-align:left;font-size:11px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--line-strong);white-space:nowrap;
+}
+.rank td{padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink-2)}
+.rank td.r{color:var(--ink-3)}
+.rank td.score{font-weight:650;color:var(--ink)}
+.rank tr.me td{background:var(--you-soft)}
+.rank tr:hover td{background:var(--card-2)}
+.rank tr.me:hover td{background:var(--you-soft)}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;border-radius:6px;padding:2px 7px;
+}
+.chip.q{color:var(--accent-ink);background:var(--accent-soft)}
+.chip.st-ok{color:var(--good);background:var(--good-soft)}
+.chip.st-reg{color:var(--ink-3);background:var(--card-3)}
+.chip.st-rec{color:var(--good);background:var(--good-soft)}
+.chip.st-rej{color:var(--ink-3);background:var(--card-3);text-decoration:line-through}
+.chip.doc{color:var(--ink-2);background:var(--card-3)}
+.tfoot{color:var(--ink-3);font-size:12.5px;padding:12px 2px 2px}
+.plab{display:none}
+
+/* mobile table -> row cards */
+@media (max-width:680px){
+  .tscroll{margin:0;padding:0;overflow:visible}
+  table.rank{min-width:0}
+  .rank thead{display:none}
+  .rank tr{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:9px 2px;border-bottom:1px solid var(--line);align-items:center}
+  .rank td{display:inline-flex;border:none;padding:0;background:none!important}
+  .rank td.r{grid-row:1;font-size:12px}
+  .rank td.score{grid-row:1;font-size:15px}
+  .rank td.prio{grid-row:1;justify-self:end;font-size:12px;gap:4px;align-items:baseline}
+  .plab{display:inline;color:var(--ink-3);font-size:11px;font-family:var(--sans)}
+  .rank td.marks{grid-row:2;grid-column:1/-1;gap:6px;flex-wrap:wrap}
+  .rank tr.me{background:var(--you-soft);border-radius:8px;padding:9px 8px}
+}
+
+/* ============ demo panel ============ */
+.demo{
+  position:fixed;right:16px;bottom:16px;z-index:100;
+  background:var(--card);border:1px dashed var(--line-strong);border-radius:14px;
+  box-shadow:var(--shadow);padding:12px 14px;
+  display:flex;flex-direction:column;gap:10px;width:230px;
+  font-size:12.5px;
+}
+.demo.min{width:auto;padding:8px 12px}
+.demo.min .demobody{display:none}
+.demohead{display:flex;align-items:center;gap:8px}
+.demohead b{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+.demohead button{margin-left:auto;color:var(--ink-3);font-size:16px;line-height:1}
+.demobody{display:flex;flex-direction:column;gap:10px}
+.demorow{display:flex;flex-direction:column;gap:5px}
+.demorow>span{font-size:11px;color:var(--ink-3)}
+.demoseg{display:flex;flex-wrap:wrap;gap:4px}
+.demoseg button{
+  font-size:11.5px;font-weight:600;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:7px;padding:4px 9px;
+}
+.demoseg button[aria-pressed="true"]{color:var(--accent-ink);background:var(--accent-soft);border-color:transparent}
+@media (max-width:640px){ .demo{right:10px;bottom:10px;left:auto} }
+
+/* views */
+#view-offer{display:none}
+[data-view="offer"] #view-offer{display:block}
+[data-view="offer"] #view-dash{display:none}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .dot::after,.shim{animation:none}
+  .meter i{transition:none}
+  .tickup{display:none}
+}
+</style>
+
+<div class="wrap" id="app">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Вступ ФІОТ</h1>
+      <small>КПІ ім. Ігоря Сікорського · бакалаврат · кампанія 2026</small>
+    </div>
+    <span class="tipwrap">
+      <button class="badge-mode" id="modeBadge" aria-describedby="modeTip">Прогноз</button>
+      <span class="tip" role="tooltip" id="modeTip">До оголошення рекомендацій (~6 серпня) прохідні бали — <b>оцінка зверху</b> за поточними заявами: хтось піде в інший ЗВО за вищим пріоритетом, тож реальний прохідний буде не вищим за показаний.</span>
+    </span>
+    <button class="iconbtn" id="themeBtn" aria-label="Перемкнути тему" title="Тема">
+      <svg id="iconMoon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+      <svg id="iconSun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg>
+    </button>
+  </header>
+
+  <div class="statusbar real" id="statusbar">
+    <span class="livepill" id="livePill"><span class="dot"></span>LIVE</span>
+    <span class="statustext" id="updatedText">Оновлено <b>щойно</b></span>
+    <span class="statusnote">джерело: vstup.edbo.gov.ua · крон кожні 10 хв · у демо цифри тікають кожні ~10 с</span>
+  </div>
+
+  <div class="banner" role="status">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div><b>Дані не оновлювались 42 хв.</b> <span>Ймовірно, ЄДЕБО тимчасово недоступне або крон затримався. Показуємо останні збережені цифри.</span></div>
+  </div>
+
+  <!-- ============ dashboard ============ -->
+  <main id="view-dash">
+    <div class="grid real" id="cards"></div>
+
+    <div class="grid sk" aria-hidden="true">
+      <div class="skcard"><div class="shim h18"></div><div class="shim h34"></div><div class="shim h10a"></div><div class="shim h10b"></div><div class="shim h10c"></div></div>
+      <div class="skcard"><div class="shim h18"></div><div class="shim h34"></div><div class="shim h10a"></div><div class="shim h10b"></div><div class="shim h10c"></div></div>
+      <div class="skcard"><div class="shim h18"></div><div class="shim h34"></div><div class="shim h10a"></div><div class="shim h10b"></div><div class="shim h10c"></div></div>
+      <div class="skcard"><div class="shim h18"></div><div class="shim h34"></div><div class="shim h10a"></div><div class="shim h10b"></div><div class="shim h10c"></div></div>
+    </div>
+
+    <div class="empty">
+      <h2>Кампанія ще не стартувала</h2>
+      <p>Прийом заяв на бакалаврат почнеться <b>19 липня</b>. Щойно з'являться перші заяви — картки оживуть автоматично, оновлення кожні 10 хвилин.</p>
+      <span class="chip">Чекаємо на старт · 4 конкурсні пропозиції ФІОТ</span>
+    </div>
+  </main>
+
+  <!-- ============ offer page ============ -->
+  <main id="view-offer">
+    <div class="backrow real">
+      <a class="back" href="#" id="backBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+        Дашборд
+      </a>
+    </div>
+
+    <div class="real">
+      <div class="offerhead">
+        <span class="code" id="oCode"></span>
+        <h2 id="oTitle"></h2>
+        <span class="sub" id="oSub"></span>
+      </div>
+
+      <div class="metricrow" id="oMetrics"></div>
+
+      <section class="panel">
+        <div class="panelhead">
+          <h3>Динаміка</h3>
+          <span class="hint">останні 14 днів</span>
+          <div class="seg" role="group" aria-label="Метрика графіка">
+            <button id="mApps" aria-pressed="true">Заяви</button>
+            <button id="mCut" aria-pressed="false">Прохідний ЗК</button>
+          </div>
+        </div>
+        <div class="chartbox" id="lineBox">
+          <svg id="lineChart" viewBox="0 0 720 240" role="img" aria-label="Графік динаміки"></svg>
+          <div class="charttip" id="lineTip"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panelhead">
+          <h3>Де я на кривій</h3>
+          <span class="hint">розподіл конкурсних балів усіх заяв</span>
+          <span class="youkey"><i></i> твій бал</span>
+        </div>
+        <div class="calcrow">
+          <label for="myScore">Мій бал</label>
+          <input class="scoreinput" id="myScore" inputmode="decimal" placeholder="напр. 154.5" aria-describedby="calcOut">
+          <span class="calcout" id="calcOut">Введи конкурсний бал — покажемо позицію в списку.</span>
+        </div>
+        <div class="chartbox" id="histBox">
+          <svg id="histChart" viewBox="0 0 720 210" role="img" aria-label="Гістограма розподілу балів"></svg>
+          <div class="charttip" id="histTip"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panelhead">
+          <h3>Рейтинговий список</h3>
+          <span class="hint" id="rankHint"></span>
+        </div>
+        <div class="tabletools">
+          <label class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="rankSearch" placeholder="№ у списку або бал…" aria-label="Пошук у списку">
+          </label>
+          <button class="ftoggle" id="fBudget" aria-pressed="false">лише претенденти на бюджет</button>
+          <button class="ftoggle" id="fDocs" aria-pressed="false">з оригіналами</button>
+        </div>
+        <div class="tscroll">
+          <table class="rank">
+            <thead><tr>
+              <th>№</th><th>Бал</th><th class="prio-h">Пріоритет</th><th>Маркери / статус</th>
+            </tr></thead>
+            <tbody id="rankBody"></tbody>
+          </table>
+        </div>
+        <div class="tfoot" id="rankFoot"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ============ demo panel ============ -->
+  <aside class="demo" id="demoPanel" aria-label="Демо-керування прототипом">
+    <div class="demohead">
+      <b>ДЕМО · СТАНИ</b>
+      <button id="demoMin" aria-label="Згорнути демо-панель">–</button>
+    </div>
+    <div class="demobody">
+      <div class="demorow">
+        <span>Стан даних</span>
+        <div class="demoseg" id="stateSeg">
+          <button data-s="live" aria-pressed="true">Наживо</button>
+          <button data-s="skeleton" aria-pressed="false">Скелетон</button>
+          <button data-s="stale" aria-pressed="false">Застаріло</button>
+          <button data-s="error" aria-pressed="false">Збій парсингу</button>
+          <button data-s="empty" aria-pressed="false">До старту</button>
+        </div>
+      </div>
+      <div class="demorow">
+        <span>Режим даних</span>
+        <div class="demoseg" id="modeSeg">
+          <button data-m="forecast" aria-pressed="true">Прогноз</button>
+          <button data-m="fact" aria-pressed="false">Рекомендації</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+/* ================= data ================= */
+const OFFERS = [
+  { id:1589232, code:'F2 · 121', title:'Інженерія програмного забезпечення',
+    total:2159, delta:124, seats:{max:220,q1:22,q2:22,zk:176},
+    cats:[ {label:'Квота 1',seats:22,passed:19,cutoff:null},
+           {label:'Квота 2',seats:22,passed:22,cutoff:148.963},
+           {label:'Загальний конкурс',seats:176,passed:176,cutoff:163.556} ] },
+  { id:1589233, code:'F2 · 121', title:'Програмування компʼютерних ігор',
+    total:466, delta:31, seats:{max:50,q1:5,q2:5,zk:40},
+    cats:[ {label:'Квота 1',seats:5,passed:3,cutoff:null},
+           {label:'Квота 2',seats:5,passed:4,cutoff:null},
+           {label:'Загальний конкурс',seats:40,passed:40,cutoff:150.667} ] },
+  { id:1589234, code:'F6 · 126', title:'Інформаційні системи та технології',
+    total:1019, delta:58, seats:{max:280,q1:28,q2:28,zk:224},
+    cats:[ {label:'Квота 1',seats:28,passed:6,cutoff:null},
+           {label:'Квота 2',seats:28,passed:11,cutoff:null},
+           {label:'Загальний конкурс',seats:224,passed:224,cutoff:145.852} ] },
+  { id:1589235, code:'F7 · 123', title:'Компʼютерна інженерія',
+    total:802, delta:47, seats:{max:170,q1:17,q2:17,zk:136},
+    cats:[ {label:'Квота 1',seats:17,passed:0,cutoff:null},
+           {label:'Квота 2',seats:17,passed:6,cutoff:null},
+           {label:'Загальний конкурс',seats:136,passed:136,cutoff:146.203} ] },
+];
+
+/* deterministic prng — числа стабільні між перезавантаженнями */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const THIN=' ';
+const fmtInt=n=>Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,THIN);
+const fmtScore=n=>n.toFixed(3);
+
+/* history: 14 днів, від ~15% до поточного */
+function history(o){
+  const r=mulberry32(o.id), pts=[], n=14;
+  const zk=o.cats[2];
+  for(let i=0;i<n;i++){
+    const t=i/(n-1);
+    const ease=t*t*(3-2*t);
+    pts.push({
+      day:i,
+      label:(7+i).toString().padStart(2,'0')+'.07',
+      apps:Math.round(o.total*(0.14+0.86*ease)+r()*14),
+      cutoff:zk.cutoff? +(zk.cutoff-5.5+5.5*ease+(r()-0.5)*0.7).toFixed(3):null,
+    });
+  }
+  pts[n-1].apps=o.total;
+  if(zk.cutoff) pts[n-1].cutoff=zk.cutoff;
+  return pts;
+}
+OFFERS.forEach(o=>o.hist=history(o));
+
+/* заявники: score ~ сума 3 рівномірних → дзвін, хвости підрізані */
+const applicantsCache={};
+function applicants(o){
+  if(applicantsCache[o.id]) return applicantsCache[o.id];
+  const r=mulberry32(o.id*7+1), list=[];
+  for(let i=0;i<o.total;i++){
+    let s=118+(r()+r()+r())/3*82;               // 118..200, гірка ~159
+    s=Math.min(199.5,s);
+    const budget=r()<0.62, q1=r()<0.02, q2=r()<0.025;
+    const st=r();
+    list.push({
+      score:+s.toFixed(3),
+      prio:budget?(1+Math.floor(r()*r()*5)):null,
+      q1,q2,budget,
+      docs:r()<0.3,
+      status:st<0.68?'ok':(st<0.95?'reg':'rej'),
+    });
+  }
+  list.sort((a,b)=>b.score-a.score);
+  list.forEach((a,i)=>a.rank=i+1);
+  applicantsCache[o.id]=list;
+  return list;
+}
+
+/* ================= state ================= */
+const S={ state:'live', mode:'forecast', view:'dash', offer:OFFERS[0], metric:'apps',
+          lastUpdate:Date.now(), myScore:null, fBudget:false, fDocs:false, q:'' };
+const $=id=>document.getElementById(id);
+const app=$('app');
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================= dashboard ================= */
+const svgNS='http://www.w3.org/2000/svg';
+function sparkline(o){
+  const pts=o.hist.slice(-7).map(p=>p.apps);
+  const min=Math.min(...pts),max=Math.max(...pts),W=92,H=30;
+  const xy=pts.map((v,i)=>[4+i*(W-8)/(pts.length-1), H-4-(H-9)*((v-min)/((max-min)||1))]);
+  const path=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const last=xy[xy.length-1];
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <path d="${path} L ${last[0].toFixed(1)} ${H-2} L 4 ${H-2} Z" fill="currentColor" opacity="0.1" stroke="none"/>
+    <path d="${path}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.4" fill="currentColor" stroke="var(--card)" stroke-width="2"/>
+  </svg>`;
+}
+const naChip=`<span class="na"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>відсутній</span>`;
+
+function cardHTML(o){
+  const cats=o.cats.map(c=>{
+    const full=c.passed>=c.seats;
+    return `<div class="catrow">
+      <span class="catname">${c.label}</span>
+      <span class="meterwrap">
+        <span class="meter${full?' full':''}"><i style="width:${(100*c.passed/c.seats).toFixed(1)}%"></i></span>
+        <span class="mtext num">${c.passed}/${c.seats}</span>
+      </span>
+      <span class="cutoff num" title="${c.cutoff?'прохідний бал':'місця ще не заповнені — прохідного поки немає (це добре: шанси є)'}">${c.cutoff?fmtScore(c.cutoff):naChip}</span>
+    </div>`;
+  }).join('');
+  return `
+    <div class="cardhead">
+      <div class="t"><span class="code">${o.code}</span><h3>${o.title}</h3></div>
+      <span class="badge-b">Бюджет</span>
+      <span class="errmark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 9v4m0 4h.01"/><circle cx="12" cy="12" r="9"/></svg>станом на 14:32</span>
+    </div>
+    <div class="bignum-row">
+      <div class="bignum"><span class="v" data-total>${fmtInt(o.total)}</span><span class="l">поданих заяв</span></div>
+      <span class="delta${o.delta?'':' zero'}" data-delta>+${fmtInt(o.delta)} за сьогодні</span>
+      ${sparkline(o)}
+    </div>
+    <div class="seatline"><span>Місць: <b class="num">${o.seats.max}</b></span><span>КВ1: <b class="num">${o.seats.q1}</b></span><span>КВ2: <b class="num">${o.seats.q2}</b></span><span>ЗК: <b class="num">${o.seats.zk}</b></span></div>
+    <div class="cats">${cats}</div>
+    <span class="cardgo">деталі <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></span>`;
+}
+
+function renderCards(){
+  const g=$('cards'); g.innerHTML='';
+  OFFERS.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='card'; b.dataset.offer=o.id;
+    b.setAttribute('aria-label',`${o.code} ${o.title} — відкрити деталі`);
+    b.innerHTML=cardHTML(o);
+    b.addEventListener('click',()=>openOffer(o));
+    g.appendChild(b);
+  });
+}
+
+/* ================= live тік ================= */
+function tick(){
+  if(S.state!=='live') return;
+  const alive=OFFERS.filter(o=>!(S.state==='error'&&o.id===1589234));
+  const o=alive[Math.floor(Math.random()*alive.length)];
+  const inc=1+Math.floor(Math.random()*3);
+  o.total+=inc; o.delta+=inc; o.hist[o.hist.length-1].apps=o.total;
+  S.lastUpdate=Date.now();
+  const card=document.querySelector(`.card[data-offer="${o.id}"]`);
+  if(card){
+    const tv=card.querySelector('[data-total]'), dv=card.querySelector('[data-delta]');
+    animateNum(tv,o.total); dv.textContent='+'+fmtInt(o.delta)+' за сьогодні';
+    if(!reduced){
+      const f=document.createElement('span');
+      f.className='tickup'; f.textContent='+'+inc;
+      const r=tv.getBoundingClientRect(), c=card.getBoundingClientRect();
+      f.style.left=(r.right-c.left+6)+'px'; f.style.top=(r.top-c.top)+'px';
+      card.appendChild(f); setTimeout(()=>f.remove(),1200);
+    }
+  }
+  if(S.view==='offer'&&S.offer.id===o.id) renderOfferMetrics();
+  renderStatus();
+}
+function animateNum(el,to){
+  if(reduced){el.textContent=fmtInt(to);return}
+  const from=parseInt(el.textContent.replace(/\D/g,''),10)||to, t0=performance.now(), D=500;
+  const step=t=>{
+    const k=Math.min(1,(t-t0)/D), e=1-Math.pow(1-k,3);
+    el.textContent=fmtInt(from+(to-from)*e);
+    if(k<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+setInterval(tick, 9000+Math.random()*3000);
+
+function renderStatus(){
+  const pill=$('livePill'), txt=$('updatedText');
+  const mins=Math.floor((Date.now()-S.lastUpdate)/60000);
+  if(S.state==='stale'){
+    pill.classList.add('warn'); pill.innerHTML='<span class="dot"></span>ПАУЗА';
+    txt.innerHTML='Оновлено <b>42 хв тому</b>';
+    return;
+  }
+  pill.classList.remove('warn'); pill.innerHTML='<span class="dot"></span>LIVE';
+  txt.innerHTML='Оновлено <b>'+(mins<1?'щойно':mins+' хв тому')+'</b>';
+}
+setInterval(renderStatus,5000);
+
+/* ================= offer page ================= */
+function openOffer(o){ S.offer=o; S.view='offer'; S.myScore=null; $('myScore').value='';
+  S.q=''; $('rankSearch').value=''; app.dataset.view='offer';
+  renderOffer(); window.scrollTo({top:0}); }
+$('backBtn').addEventListener('click',e=>{e.preventDefault(); S.view='dash'; app.dataset.view='dash';});
+app.dataset.view='dash';
+
+function renderOffer(){
+  const o=S.offer;
+  $('oCode').textContent=o.code+' · конкурсна пропозиція №'+o.id;
+  $('oTitle').textContent=o.title;
+  $('oSub').textContent='бюджет · денна форма · джерело: vstup.edbo.gov.ua/offer/'+o.id;
+  renderOfferMetrics(); renderLine(); renderHist(); renderTable();
+}
+function metricHTML(l,v,d){return `<div class="metric"><div class="l">${l}</div><div class="v">${v}</div>${d?`<div class="d">${d}</div>`:''}</div>`}
+function renderOfferMetrics(){
+  const o=S.offer,zk=o.cats[2];
+  $('oMetrics').innerHTML=
+    metricHTML('Поданих заяв',fmtInt(o.total),'+'+fmtInt(o.delta)+' за сьогодні')+
+    metricHTML('Бюджетних місць',`${o.seats.max} <small>КВ1 ${o.seats.q1} · КВ2 ${o.seats.q2} · ЗК ${o.seats.zk}</small>`)+
+    metricHTML('Прохідний ЗК'+(S.mode==='forecast'?' (прогноз)':''),zk.cutoff?fmtScore(zk.cutoff):'—')+
+    metricHTML('Пройшли за ЗК',`${zk.passed}<small>/${zk.seats}</small>`);
+}
+
+/* ---- line chart ---- */
+const PADL=52,PADR=16,PADT=14,PADB=28,LW=720,LH=240;
+function niceTicks(min,max,n){
+  const span=max-min||1, step0=span/n, mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const step=[1,2,2.5,5,10].map(k=>k*mag).find(s=>span/s<=n)||10*mag;
+  const t0=Math.ceil(min/step)*step, out=[];
+  for(let v=t0;v<=max+1e-9;v+=step) out.push(v);
+  return out;
+}
+function renderLine(){
+  const o=S.offer, svg=$('lineChart'); svg.innerHTML='';
+  const metric=S.metric, pts=o.hist.filter(p=>metric==='apps'||p.cutoff!=null);
+  const vals=pts.map(p=>metric==='apps'?p.apps:p.cutoff);
+  let min=Math.min(...vals),max=Math.max(...vals);
+  if(metric==='apps'){min=0}else{const pad=(max-min)*0.25+0.3;min-=pad;max+=pad}
+  const X=i=>PADL+i*(LW-PADL-PADR)/(pts.length-1);
+  const Y=v=>PADT+(LH-PADT-PADB)*(1-(v-min)/((max-min)||1));
+  let g='';
+  niceTicks(min,max,4).forEach(v=>{
+    const y=Y(v);
+    g+=`<line x1="${PADL}" x2="${LW-PADR}" y1="${y}" y2="${y}" stroke="var(--gridline)" stroke-width="1"/>`;
+    g+=`<text x="${PADL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">${metric==='apps'?fmtInt(v):v.toFixed(1)}</text>`;
+  });
+  pts.forEach((p,i)=>{ if(i%3===0||i===pts.length-1)
+    g+=`<text x="${X(i)}" y="${LH-8}" text-anchor="middle" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">${p.label}</text>`;});
+  const line=pts.map((p,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(vals[i]).toFixed(1)).join(' ');
+  g+=`<path d="${line} L ${X(pts.length-1)} ${LH-PADB} L ${PADL} ${LH-PADB} Z" fill="var(--accent)" opacity="0.09"/>`;
+  g+=`<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const lx=X(pts.length-1), ly=Y(vals[vals.length-1]);
+  g+=`<circle cx="${lx}" cy="${ly}" r="4.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>`;
+  g+=`<text x="${lx-8}" y="${Math.max(ly-10,16)}" text-anchor="end" font-size="12" font-weight="650" fill="var(--ink)" font-family="var(--mono)">${metric==='apps'?fmtInt(vals[vals.length-1]):fmtScore(vals[vals.length-1])}</text>`;
+  g+=`<line id="cross" x1="0" x2="0" y1="${PADT}" y2="${LH-PADB}" stroke="var(--line-strong)" stroke-width="1" visibility="hidden"/>`;
+  g+=`<circle id="crossDot" r="4" fill="var(--accent)" stroke="var(--card)" stroke-width="2" visibility="hidden"/>`;
+  svg.innerHTML=g;
+  const box=$('lineBox'), tip=$('lineTip');
+  const move=ev=>{
+    const r=svg.getBoundingClientRect(), cx=(ev.touches?ev.touches[0]:ev).clientX;
+    const px=(cx-r.left)*LW/r.width;
+    const i=Math.max(0,Math.min(pts.length-1,Math.round((px-PADL)/((LW-PADL-PADR)/(pts.length-1)))));
+    const x=X(i),y=Y(vals[i]);
+    svg.querySelector('#cross').setAttribute('x1',x);svg.querySelector('#cross').setAttribute('x2',x);
+    svg.querySelector('#cross').setAttribute('visibility','visible');
+    const d=svg.querySelector('#crossDot');d.setAttribute('cx',x);d.setAttribute('cy',y);d.setAttribute('visibility','visible');
+    tip.innerHTML=`<b>${pts[i].label}</b> · ${metric==='apps'?'заяв: ':'прохідний ЗК: '}<span class="num">${metric==='apps'?fmtInt(vals[i]):fmtScore(vals[i])}</span>`;
+    tip.style.opacity=1;
+    const bx=box.getBoundingClientRect();
+    let tx=x*r.width/LW-tip.offsetWidth/2;
+    tx=Math.max(0,Math.min(bx.width-tip.offsetWidth,tx));
+    tip.style.left=tx+'px'; tip.style.top=(y*r.height/LH-tip.offsetHeight-12)+'px';
+  };
+  const leave=()=>{tip.style.opacity=0;
+    svg.querySelector('#cross').setAttribute('visibility','hidden');
+    svg.querySelector('#crossDot').setAttribute('visibility','hidden');};
+  svg.onmousemove=move; svg.onmouseleave=leave; svg.ontouchmove=move; svg.ontouchend=leave;
+}
+$('mApps').addEventListener('click',()=>{S.metric='apps';segPress('mApps','mCut');renderLine()});
+$('mCut').addEventListener('click',()=>{S.metric='cut';segPress('mCut','mApps');renderLine()});
+function segPress(on,off){$(on).setAttribute('aria-pressed','true');$(off).setAttribute('aria-pressed','false')}
+
+/* ---- histogram + calculator ---- */
+const HB=5, HMIN=115, HMAX=200, HH=210;
+function bins(o){
+  const list=applicants(o), n=Math.ceil((HMAX-HMIN)/HB), out=new Array(n).fill(0);
+  list.forEach(a=>{const i=Math.min(n-1,Math.max(0,Math.floor((a.score-HMIN)/HB)));out[i]++});
+  return out;
+}
+function roundTopBar(x,y,w,h,r){
+  if(h<=r) r=Math.max(0,h-0.5);
+  return `M ${x} ${y+h} L ${x} ${y+r} Q ${x} ${y} ${x+r} ${y} L ${x+w-r} ${y} Q ${x+w} ${y} ${x+w} ${y+r} L ${x+w} ${y+h} Z`;
+}
+function renderHist(){
+  const o=S.offer, svg=$('histChart'); svg.innerHTML='';
+  const bs=bins(o), maxv=Math.max(...bs);
+  const n=bs.length, plotW=LW-PADL-PADR, bw=plotW/n;
+  const Y=v=>PADT+(HH-PADT-PADB)*(1-v/maxv);
+  let g='';
+  niceTicks(0,maxv,3).forEach(v=>{const y=Y(v);
+    g+=`<line x1="${PADL}" x2="${LW-PADR}" y1="${y}" y2="${y}" stroke="var(--gridline)" stroke-width="1"/>`;
+    g+=`<text x="${PADL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">${fmtInt(v)}</text>`;});
+  bs.forEach((v,i)=>{
+    const x=PADL+i*bw, y=Y(v), h=HH-PADB-y;
+    if(v>0) g+=`<path d="${roundTopBar(x+1,y,bw-2,h,3)}" fill="var(--accent)" opacity="${S.myScore!=null&&S.myScore>=HMIN+i*HB&&S.myScore<HMIN+(i+1)*HB?1:0.75}"/>`;
+    if(i%4===0) g+=`<text x="${x}" y="${HH-8}" text-anchor="middle" font-size="11" fill="var(--ink-3)" font-family="var(--mono)">${HMIN+i*HB}</text>`;
+  });
+  const zk=o.cats[2];
+  if(zk.cutoff){
+    const cx=PADL+(zk.cutoff-HMIN)/(HMAX-HMIN)*plotW;
+    g+=`<line x1="${cx}" x2="${cx}" y1="${PADT}" y2="${HH-PADB}" stroke="var(--ink-3)" stroke-width="1.5"/>`;
+    g+=`<text x="${cx+6}" y="${PADT+12}" font-size="11" fill="var(--ink-2)">прохідний ЗК ${fmtScore(zk.cutoff)}</text>`;
+  }
+  if(S.myScore!=null&&S.myScore>=HMIN&&S.myScore<=HMAX){
+    const mx=PADL+(S.myScore-HMIN)/(HMAX-HMIN)*plotW;
+    g+=`<line x1="${mx}" x2="${mx}" y1="${PADT}" y2="${HH-PADB}" stroke="var(--you)" stroke-width="2.5" stroke-linecap="round"/>`;
+    g+=`<circle cx="${mx}" cy="${PADT}" r="5" fill="var(--you)" stroke="var(--card)" stroke-width="2"/>`;
+  }
+  g+=`<line x1="${PADL}" x2="${LW-PADR}" y1="${HH-PADB}" y2="${HH-PADB}" stroke="var(--line-strong)" stroke-width="1"/>`;
+  svg.innerHTML=g;
+  const box=$('histBox'),tip=$('histTip');
+  svg.onmousemove=ev=>{
+    const r=svg.getBoundingClientRect();
+    const px=(ev.clientX-r.left)*LW/r.width;
+    const i=Math.floor((px-PADL)/bw);
+    if(i<0||i>=n){tip.style.opacity=0;return}
+    tip.innerHTML=`<b>${HMIN+i*HB}–${HMIN+(i+1)*HB}</b> балів · заяв: <span class="num">${fmtInt(bs[i])}</span>`;
+    tip.style.opacity=1;
+    const bx=box.getBoundingClientRect();
+    let tx=(PADL+i*bw+bw/2)*r.width/LW-tip.offsetWidth/2;
+    tx=Math.max(0,Math.min(bx.width-tip.offsetWidth,tx));
+    tip.style.left=tx+'px'; tip.style.top=(Y(bs[i])*r.height/HH-tip.offsetHeight-10)+'px';
+  };
+  svg.onmouseleave=()=>tip.style.opacity=0;
+}
+$('myScore').addEventListener('input',e=>{
+  const v=parseFloat(e.target.value.replace(',','.'));
+  S.myScore=isFinite(v)&&v>=100&&v<=200?v:null;
+  const out=$('calcOut');
+  if(S.myScore==null){out.textContent=e.target.value.trim()?'Бал має бути від 100 до 200.':'Введи конкурсний бал — покажемо позицію в списку.';}
+  else{
+    const o=S.offer,list=applicants(o);
+    const above=list.filter(a=>a.score>S.myScore).length;
+    const pos=above+1, pct=Math.round(100*above/list.length);
+    const zk=o.cats[2];
+    let cmp='';
+    if(zk.cutoff){
+      const d=S.myScore-zk.cutoff;
+      cmp=d>=0?` · <span class="pos">на ${d.toFixed(1)} бала вище прохідного ЗК</span>`
+              :` · <span class="neg">на ${(-d).toFixed(1)} бала нижче прохідного ЗК</span>`;
+      if(S.mode==='forecast') cmp+=' <span style="color:var(--ink-3)">(прогноз)</span>';
+    }
+    out.innerHTML=`Ти приблизно <b>№${THIN}${fmtInt(pos)}</b> із ${fmtInt(list.length)} (топ ${pct}%)${cmp}`;
+  }
+  renderHist(); renderTable();
+});
+
+/* ---- ranking table ---- */
+const STATUS={ok:['st-ok','Допущено'],reg:['st-reg','Зареєстровано'],rej:['st-rej','Відхилено'],rec:['st-rec','Рекомендовано']};
+function renderTable(){
+  const o=S.offer, list=applicants(o), body=$('rankBody');
+  const zkSeats=o.seats.zk;
+  let rows=list;
+  if(S.fBudget) rows=rows.filter(a=>a.budget&&a.status!=='rej');
+  if(S.fDocs) rows=rows.filter(a=>a.docs);
+  if(S.q) rows=rows.filter(a=>String(a.rank).startsWith(S.q)||String(a.score).startsWith(S.q));
+  const shown=rows.slice(0,200);
+  body.innerHTML=shown.map(a=>{
+    let st=a.status;
+    if(S.mode==='fact'&&st==='ok'&&a.budget&&a.rank<=zkSeats) st='rec';
+    const [cls,name]=STATUS[st];
+    const me=S.myScore!=null&&Math.abs(a.score-S.myScore)<0.35;
+    return `<tr${me?' class="me"':''}>
+      <td class="r num">${fmtInt(a.rank)}</td>
+      <td class="score num">${fmtScore(a.score)}</td>
+      <td class="prio num">${a.prio!=null?'<span class="plab">пріоритет</span>'+a.prio:'<span style="color:var(--ink-3)">контракт</span>'}</td>
+      <td class="marks">
+        ${a.q1?'<span class="chip q">КВ1</span>':''}${a.q2?'<span class="chip q">КВ2</span>':''}
+        <span class="chip ${cls}">${name}</span>
+        ${a.docs?'<span class="chip doc"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>оригінал</span>':''}
+      </td></tr>`;
+  }).join('');
+  $('rankHint').textContent='заяв: '+fmtInt(list.length);
+  $('rankFoot').textContent=rows.length>200
+    ? `Показано 200 із ${fmtInt(rows.length)} — у продукті список віртуалізується і прокручується повністю.`
+    : `Знайдено записів: ${fmtInt(rows.length)}.`;
+}
+$('rankSearch').addEventListener('input',e=>{S.q=e.target.value.trim();renderTable()});
+$('fBudget').addEventListener('click',e=>{S.fBudget=!S.fBudget;e.currentTarget.setAttribute('aria-pressed',S.fBudget);renderTable()});
+$('fDocs').addEventListener('click',e=>{S.fDocs=!S.fDocs;e.currentTarget.setAttribute('aria-pressed',S.fDocs);renderTable()});
+
+/* ================= theme ================= */
+function applyThemeIcon(){
+  const t=document.documentElement.dataset.theme
+    || (matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  $('iconMoon').style.display=t==='dark'?'':'none';
+  $('iconSun').style.display=t==='light'?'':'none';
+}
+$('themeBtn').addEventListener('click',()=>{
+  const cur=document.documentElement.dataset.theme
+    || (matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  document.documentElement.dataset.theme=cur==='dark'?'light':'dark';
+  applyThemeIcon();
+  if(S.view==='offer'){renderLine();renderHist()}
+});
+applyThemeIcon();
+
+/* ================= demo panel ================= */
+$('stateSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  S.state=b.dataset.s;
+  [...$('stateSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));
+  app.dataset.state=S.state;
+  if(S.state==='stale') renderStatus(); else {S.lastUpdate=Date.now();renderStatus()}
+  if(S.state!=='live'&&S.view==='offer'&&(S.state==='empty'||S.state==='skeleton')){S.view='dash';app.dataset.view='dash'}
+});
+$('modeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  S.mode=b.dataset.m;
+  [...$('modeSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));
+  const badge=$('modeBadge');
+  if(S.mode==='fact'){badge.textContent='Офіційні рекомендації';badge.classList.add('fact');
+    $('modeTip').innerHTML='Рекомендації до зарахування опубліковані — цифри рахуються за фактичними статусами «Рекомендовано» і маркерами квот. Це вже точні дані.';}
+  else{badge.textContent='Прогноз';badge.classList.remove('fact');
+    $('modeTip').innerHTML='До оголошення рекомендацій (~6 серпня) прохідні бали — <b>оцінка зверху</b> за поточними заявами: хтось піде в інший ЗВО за вищим пріоритетом, тож реальний прохідний буде не вищим за показаний.';}
+  if(S.view==='offer'){renderOfferMetrics();renderTable()}
+});
+$('demoMin').addEventListener('click',()=>{
+  const p=$('demoPanel'); p.classList.toggle('min');
+  $('demoMin').textContent=p.classList.contains('min')?'+':'–';
+});
+app.dataset.state='live';
+if(innerWidth<680){$('demoPanel').classList.add('min');$('demoMin').textContent='+'}
+
+/* init */
+renderCards(); renderStatus();
+</script>
