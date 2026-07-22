@@ -43,29 +43,32 @@ export class ApiController {
   @Get('api/offers')
   async list() {
     const docs = await this.offers.find({ enabled: true }).sort({ sortOrder: 1 }).lean();
-    const out: any[] = [];
     let updatedAt = new Date(0);
 
-    for (const doc of docs as any[]) {
+    const outPromises = docs.map(async (doc: any) => {
       const id = doc.offerId;
-      const last = await this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: -1 }).lean() as any;
-      const lastAny = await this.snapshots.findOne({ offerId: id }).sort({ ts: -1 }).lean() as any;
-      const latest = await this.latest.findOne({ offerId: id }).lean() as any;
-      if (!last || !latest) continue; // ще жодного вдалого парсу
+      
+      const [last, lastAny, latest, sparkDocs] = await Promise.all([
+        this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: -1 }).lean() as any,
+        this.snapshots.findOne({ offerId: id }).sort({ ts: -1 }).lean() as any,
+        this.latest.findOne({ offerId: id }).lean() as any,
+        this.snapshots.find({ offerId: id, parseOk: true }).sort({ ts: -1 }).limit(20).lean() as any[]
+      ]);
+
+      if (!last || !latest) return null; // ще жодного вдалого парсу
 
       const fetchedAt: Date = latest.fetchedAt;
-      if (fetchedAt > updatedAt) updatedAt = fetchedAt;
 
       // приріст за добу: різниця з найпізнішим снапшотом старшим за 24 год (або найпершим)
       const dayAgo = new Date(Date.now() - 24 * 3600_000);
-      const base =
-        (await this.snapshots.findOne({ offerId: id, parseOk: true, ts: { $lte: dayAgo } }).sort({ ts: -1 }).lean() as any) ??
-        (await this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: 1 }).lean() as any);
+      let base = await this.snapshots.findOne({ offerId: id, parseOk: true, ts: { $lte: dayAgo } }).sort({ ts: -1 }).lean() as any;
+      if (!base) {
+        base = await this.snapshots.findOne({ offerId: id, parseOk: true }).sort({ ts: 1 }).lean() as any;
+      }
+      
       const today = Math.max(0, last.total - (base?.total ?? last.total));
 
       // спарклайн: останні ≤20 снапшотів (крон ~кожні 10 хв) — реальна динаміка
-      const sparkDocs = await this.snapshots
-        .find({ offerId: id, parseOk: true }).sort({ ts: -1 }).limit(20).lean() as any[];
       const spark = sparkDocs.map((s) => s.total).reverse();
 
       const cat = (label: string, c: any) => ({
@@ -74,7 +77,7 @@ export class ApiController {
         of: last.forecast ? null : c?.cutoff ?? null,
       });
 
-      out.push({
+      return {
         id,
         code: doc.code ?? '',
         spec: doc.specialityName ?? '',
@@ -91,8 +94,17 @@ export class ApiController {
         spark,
         parseOk: lastAny ? lastAny.parseOk !== false : true,
         fetchedAt: fetchedAt.toISOString(),
-      });
+      };
+    });
+
+    const results = await Promise.all(outPromises);
+    const out = results.filter(Boolean); // Видаляємо null-и (де не було даних)
+
+    for (const res of out) {
+      const d = new Date(res.fetchedAt);
+      if (d > updatedAt) updatedAt = d;
     }
+
     return { updatedAt: (updatedAt.getTime() ? updatedAt : new Date()).toISOString(), offers: out };
   }
 
