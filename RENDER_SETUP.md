@@ -24,7 +24,7 @@
 ### API Web Service (Free)
 - Root Directory: apps/api
 - Build Command: npm ci && npm run build
-- Start Command: npm run start:local
+- Start Command: npm run start
 - Health Check Path: /healthz
 
 ### Web Static Site (Free)
