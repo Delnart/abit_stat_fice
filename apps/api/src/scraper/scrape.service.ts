@@ -50,10 +50,22 @@ export class ScrapeService {
     const { meta, requests } = parseOfferHtml(htmlPages);
 
     const doc = await this.offers.findOne({ offerId: id }).lean();
-    // обсяг: ЄДЕБО — джерело правди; ручний конфіг у Mongo — лише поки order_budget порожній
-    const seatsMax = meta.orderBudget ?? (doc as any)?.seatsMax ?? 0;
-    const q1 = (doc as any)?.seatsQ1 || quotaSeats(seatsMax);
-    const q2 = (doc as any)?.seatsQ2 || quotaSeats(seatsMax);
+    // обсяг: abit-poisk не завжди дає місця, тому фолбек на Mongo, а контракт рахуємо як ліцензія мінус бюджет
+    let budgetSeats = meta.orderBudget ?? (doc as any)?.seatsMax ?? 0;
+    let licenseSeats = meta.orderLicense ?? (doc as any)?.orderLicense ?? 0;
+    let contractSeats = meta.orderContract ?? (doc as any)?.orderContract ?? null;
+    
+    if (contractSeats === null) {
+        contractSeats = Math.max(0, licenseSeats - budgetSeats);
+    }
+
+    const seatsMax = budgetSeats;
+    let q1 = (doc as any)?.seatsQ1 || quotaSeats(seatsMax);
+    let q2 = (doc as any)?.seatsQ2 || quotaSeats(seatsMax);
+    if (seatsMax === 0) {
+      q1 = 0;
+      q2 = 0;
+    }
     const stats = calcStats(requests, { max: seatsMax, q1, q2 });
 
     const now = new Date();
