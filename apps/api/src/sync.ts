@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const scraper = app.get(ScrapeService);
   
-  console.log('Запуск парсингу з локального комп\\'ютера (обхід блокування ЄДЕБО)...');
+  console.log("Запуск парсингу з локального комп'ютера (обхід блокування ЄДЕБО)...");
   const result = await scraper.runAll();
   
   console.log('Готово! Результат:', result);
