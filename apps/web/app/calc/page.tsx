@@ -1,6 +1,4 @@
 'use client';
-// Калькулятор конкурсного балу НМТ-2026 для галузі F (коефіцієнти — з оферів ЄДЕБО,
-// однакові для всіх пропозицій ФІОТ) + фактична позиція по кожній пропозиції.
 import { useState } from 'react';
 import Header from '../../components/Header';
 import { ScoreResults } from '../../components/ScoreCheck';
@@ -8,7 +6,6 @@ import { DemoBar, Footer } from '../../components/ui';
 import { fscore } from '../../lib/format';
 import type { Quota } from '../../lib/types';
 
-// обов'язкові предмети НМТ і коефіцієнти ЄДЕБО для ФІОТ
 const REQUIRED = [
   { key: 'ukr', label: 'Українська мова', k: 0.3 },
   { key: 'math', label: 'Математика', k: 0.5 },

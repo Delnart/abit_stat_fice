@@ -55,10 +55,11 @@ a { color: inherit; text-decoration: none }
   background:var(--bg); border-bottom:1px solid var(--bd);
 }
 @media (max-width:640px){
-  .hdr{ margin:0 -12px 6px; padding:10px 12px; flex-wrap: wrap; }
-  .hdr-brand { flex-wrap: wrap; gap: 10px 14px; }
-  .hdr-nav { margin-left: 0; }
-  .hdr-title { display: none; }
+  .hdr { margin:0 -12px 6px; padding:10px 12px; flex-wrap: wrap; gap: 12px; }
+  .hdr-brand { min-width: 100%; justify-content: space-between; gap: 10px; }
+  .hdr-nav { margin-left: auto; }
+  .hdr-title, .hdr-sub { display: none; }
+  .hdr-right { width: 100%; justify-content: space-between; }
 }
 .hdr-right { display:flex; align-items:center; gap:8px }
 .live-pill {

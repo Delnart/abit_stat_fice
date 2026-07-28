@@ -1,52 +1,83 @@
 import { Injectable, Logger } from '@nestjs/common';
+import fetch from 'node-fetch';
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** GET /offer/{id} з ретраями: ~7–13 % запитів ЄДЕБО випадково падають з 500/502 */
 @Injectable()
 export class EdboClient {
   private readonly log = new Logger(EdboClient.name);
-  private readonly base = process.env.EDBO_BASE_URL ?? 'https://vstup.edbo.gov.ua';
+  private readonly base = 'https://abit-poisk.org.ua/rate2026/direction';
   private readonly backoff = [1000, 3000];
 
-  async fetchOffer(offerId: string): Promise<string> {
-    // унікальний query — обхід CDN-кешу ЄДЕБО (інакше прилітає застаріла копія сторінки)
-    const url = `${this.base}/offer/${offerId}?_=${Date.now()}`;
-    let lastErr: unknown;
-    for (let attempt = 0; attempt <= this.backoff.length; attempt++) {
-      try {
-        const res = await fetch(url, {
-          headers: { 
-            'User-Agent': UA,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
-            'sec-fetch-dest': 'document',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-site': 'none',
-            'sec-fetch-user': '?1',
-            'upgrade-insecure-requests': '1'
-          },
-          signal: AbortSignal.timeout(15_000),
-          redirect: 'follow',
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.text();
-      } catch (e) {
-        lastErr = e;
-        if (attempt < this.backoff.length) {
-          this.log.warn(`offer ${offerId}: спроба ${attempt + 1} впала (${e}), ретрай…`);
-          await sleep(this.backoff[attempt]);
+  /** Повертає масив HTML сторінок для заданого offerId */
+  async fetchOffer(offerId: string): Promise<string[]> {
+    const pages: string[] = [];
+    let page = 1;
+    
+    while (true) {
+      const url = `${this.base}/${offerId}?page=${page}`;
+      let lastErr: unknown;
+      let success = false;
+      let html = '';
+
+      for (let attempt = 0; attempt <= this.backoff.length; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15_000);
+          
+          try {
+            const res = await fetch(url, {
+              headers: { 
+                'User-Agent': UA,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              },
+              signal: controller.signal,
+              redirect: 'follow',
+            });
+            clearTimeout(timeout);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            html = await res.text();
+            success = true;
+            break;
+          } catch (e) {
+            clearTimeout(timeout);
+            throw e;
+          }
+        } catch (e) {
+          lastErr = e;
+          if (attempt < this.backoff.length) {
+            this.log.warn(`offer ${offerId} page ${page}: спроба ${attempt + 1} впала (${e}), ретрай…`);
+            await sleep(this.backoff[attempt]);
+          }
         }
       }
+
+      if (!success) {
+        throw new Error(`offer ${offerId} page ${page}: усі спроби вичерпано — ${lastErr}`);
+      }
+
+      // Перевіряємо, чи є на сторінці заявки. Якщо ні — ми дійшли до кінця.
+      if (!html.includes('application-status application-status-')) {
+        break;
+      }
+      
+      pages.push(html);
+      
+      // Якщо на сторінці менше 200 заявок, значить це остання сторінка
+      const matchCount = (html.match(/application-status application-status-/g) || []).length;
+      if (matchCount < 200) {
+        break;
+      }
+      
+      page++;
+      await sleep(500); // невелика пауза між сторінками
     }
-    throw new Error(`offer ${offerId}: усі спроби вичерпано — ${lastErr}`);
+    
+    return pages;
   }
 }

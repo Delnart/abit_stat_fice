@@ -46,8 +46,8 @@ export class ScrapeService {
   }
 
   private async scrapeOne(id: string) {
-    const html = await this.client.fetchOffer(id);
-    const { meta, requests } = parseOfferHtml(html);
+    const htmlPages = await this.client.fetchOffer(id);
+    const { meta, requests } = parseOfferHtml(htmlPages);
 
     const doc = await this.offers.findOne({ offerId: id }).lean();
     // обсяг: ЄДЕБО — джерело правди; ручний конфіг у Mongo — лише поки order_budget порожній

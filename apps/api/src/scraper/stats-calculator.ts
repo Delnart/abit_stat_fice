@@ -38,23 +38,16 @@ export function quotaSeats(max: number): number {
   return max > 0 ? Math.max(1, Math.round(max * 0.1)) : 0;
 }
 
-function mainSubjectScore(r: EdboRequest): number {
-  let best = 0, score = 0;
-  for (const s of r.subjects) if (s.coefficient > best) { best = s.coefficient; score = s.score; }
-  return score;
-}
-
-/** бал ↓ → пріоритет ↑ (без пріоритету — в кінець) → оцінка головного предмета ↓ */
+/** Порівнює заявки за балом і пріоритетом. abit-poisk не надає коефіцієнтів, тому предметні бали ігноруються */
 export function rankCompare(a: EdboRequest, b: EdboRequest): number {
   if (b.score !== a.score) return b.score - a.score;
   const pa = a.priority ?? 99, pb = b.priority ?? 99;
-  if (pa !== pb) return pa - pb;
-  return mainSubjectScore(b) - mainSubjectScore(a);
+  return pa - pb;
 }
 
 function pocket(list: EdboRequest[], seats: number): CatResult {
   const passed = Math.min(list.length, seats);
-  // прохідний існує лише коли місця заповнені повністю; інакше «відсутній» — і це добра новина
+  // розрахунок відсікання за останнім зарахованим; якщо недобір — прохідний невідомий
   const cutoff = seats > 0 && passed === seats ? list[passed - 1].score : null;
   return { seats, passed, cutoff };
 }

@@ -19,6 +19,7 @@
     "cheerio": "^1.2.0",
     "https-proxy-agent": "^9.1.0",
     "mongoose": "^8.16.1",
+    "node-fetch": "^2.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -26,6 +27,7 @@
     "@nestjs/testing": "^11.1.28",
     "@swc/core": "^1.7.26",
     "@types/node": "^22",
+    "@types/node-fetch": "^2.6.13",
     "@types/supertest": "^6.0.3",
     "mongodb-memory-server": "^10.1.4",
     "supertest": "^7.1.1",
