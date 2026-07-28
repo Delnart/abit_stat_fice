@@ -50,19 +50,24 @@ export class ScrapeService {
     const { meta, requests } = parseOfferHtml(htmlPages);
 
     const doc = await this.offers.findOne({ offerId: id }).lean();
-    // обсяг: abit-poisk не завжди дає місця, тому фолбек на Mongo, а контракт рахуємо як ліцензія мінус бюджет
     let budgetSeats = meta.orderBudget ?? (doc as any)?.seatsMax ?? 0;
+    let contractSeats = meta.orderContract;
     let licenseSeats = meta.orderLicense ?? (doc as any)?.orderLicense ?? 0;
-    let contractSeats = meta.orderContract ?? (doc as any)?.orderContract ?? null;
     
-    if (contractSeats === null) {
+    // Якщо abit-poisk не надав кількість контрактних місць (або в базі кешований 0), рахуємо її самі
+    if (contractSeats == null || contractSeats === 0) {
         contractSeats = Math.max(0, licenseSeats - budgetSeats);
     }
+    console.log(`offer ${id}: meta.license=${meta.orderLicense} doc.license=${(doc as any)?.orderLicense} => licenseSeats=${licenseSeats}, contractSeats=${contractSeats}`);
 
     const seatsMax = budgetSeats;
-    let q1 = (doc as any)?.seatsQ1 || quotaSeats(seatsMax);
-    let q2 = (doc as any)?.seatsQ2 || quotaSeats(seatsMax);
-    if (seatsMax === 0) {
+    let q1 = (doc as any)?.seatsQ1 ?? quotaSeats(seatsMax);
+    let q2 = (doc as any)?.seatsQ2 ?? quotaSeats(seatsMax);
+    
+    // Забираємо квоти, якщо бюджетних місць немає або якщо це не денна форма
+    // (на заочній та дистанційній зазвичай немає квот)
+    const form = (doc as any)?.form || 'денна';
+    if (seatsMax === 0 || form !== 'денна') {
       q1 = 0;
       q2 = 0;
     }
@@ -77,8 +82,8 @@ export class ScrapeService {
           specialityName: meta.specialityName,
           universityName: meta.universityName,
           seatsMax, seatsQ1: q1, seatsQ2: q2,
-          orderContract: meta.orderContract,
-          orderLicense: meta.orderLicense,
+          orderContract: contractSeats,
+          orderLicense: licenseSeats,
         },
         $setOnInsert: { title: meta.name, enabled: true },
       },
