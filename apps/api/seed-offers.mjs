@@ -6,19 +6,21 @@ import mongoose from 'mongoose';
 // парсер перепише його автоматично (ЄДЕБО — джерело правди)
 // orderLicense (ліцензійний обсяг) потрібно вказувати вручну, оскільки abit-poisk його не надає.
 const OFFERS = [
-  { offerId: '1586544', group: 'f2',  form: 'денна',        title: 'Інженерія програмного забезпечення', seatsMax: 220, orderLicense: 300, sortOrder: 10, prev2025: { apps: 2159, cutoff: 164 } },
-  { offerId: '1639860', group: 'f2i', form: 'денна',        title: 'Інженерія програмного забезпечення: Інтернет', seatsMax: 50, orderLicense: 100, sortOrder: 20, prev2025: { apps: 466, cutoff: 150.667 } },
-  { offerId: '1591057', group: 'f6',  form: 'денна',        title: 'Інформаційні системи та технології', seatsMax: 280, orderLicense: 350, sortOrder: 30, prev2025: { apps: 1019, cutoff: 145.852 } },
-  { offerId: '1588416', group: 'f7',  form: 'денна',        title: 'Комп\'ютерна інженерія', seatsMax: 170, orderLicense: 250, sortOrder: 40, prev2025: { apps: 802, cutoff: 146 } },
-  { offerId: '1630258', group: 'f2',  form: 'дистанційна',  title: 'Інженерія програмного забезпечення', seatsMax: 0, orderLicense: 50, sortOrder: 50 },
-  // денна: магістратура 2026 і тд
-  { offerId: '1586573', group: 'f2',  form: 'заочна',       title: 'Інженерія програмного забезпечення', seatsMax: 14, orderLicense: 30, sortOrder: 60 },
-  { offerId: '1600953', group: 'f2i', form: 'дистанційна',  title: 'Інженерія програмного забезпечення: Інтернет', seatsMax: 0, orderLicense: 30, sortOrder: 70 },
-  { offerId: '1671590', group: 'f2i', form: 'заочна',       title: 'Інженерія програмного забезпечення: Інтернет', seatsMax: 5, orderLicense: 20, sortOrder: 80 },
+  // Денна
+  { offerId: '1586544', group: 'f2',  form: 'денна',        title: 'Інженерія програмного забезпечення', seatsMax: 240, orderLicense: 400, sortOrder: 10, prev2025: { apps: 2159, cutoff: 164 } },
+  { offerId: '1639860', group: 'f2i', form: 'денна',        title: 'Програмування комп\'ютерних ігор', seatsMax: 125, orderLicense: 220, sortOrder: 20, prev2025: { apps: 466, cutoff: 150.667 } },
+  { offerId: '1591057', group: 'f6',  form: 'денна',        title: 'Інформаційні системи та технології', seatsMax: 205, orderLicense: 300, sortOrder: 30, prev2025: { apps: 1019, cutoff: 145.852 } },
+  { offerId: '1588416', group: 'f7',  form: 'денна',        title: 'Комп\'ютерна інженерія', seatsMax: 150, orderLicense: 200, sortOrder: 40, prev2025: { apps: 802, cutoff: 146 } },
+  // Дистанційна
+  { offerId: '1630258', group: 'f2',  form: 'дистанційна',  title: 'Інженерія програмного забезпечення', seatsMax: 0, orderLicense: 60, sortOrder: 50 },
+  { offerId: '1600953', group: 'f2i', form: 'дистанційна',  title: 'Програмування комп\'ютерних ігор', seatsMax: 0, orderLicense: 30, sortOrder: 70 },
   { offerId: '1601038', group: 'f6',  form: 'дистанційна',  title: 'Інформаційні системи та технології', seatsMax: 0, orderLicense: 30, sortOrder: 90 },
-  { offerId: '1613137', group: 'f6',  form: 'заочна',       title: 'Інформаційні системи та технології', seatsMax: 14, orderLicense: 30, sortOrder: 100 },
   { offerId: '1600952', group: 'f7',  form: 'дистанційна',  title: 'Комп\'ютерна інженерія', seatsMax: 0, orderLicense: 30, sortOrder: 110 },
-  { offerId: '1588884', group: 'f7',  form: 'заочна',       title: 'Комп\'ютерна інженерія', seatsMax: 0, orderLicense: 30, sortOrder: 120 },
+  // Заочна
+  { offerId: '1586573', group: 'f2',  form: 'заочна',       title: 'Інженерія програмного забезпечення', seatsMax: 14, orderLicense: 35, sortOrder: 60 },
+  { offerId: '1671590', group: 'f2i', form: 'заочна',       title: 'Програмування комп\'ютерних ігор', seatsMax: 5, orderLicense: 20, sortOrder: 80 },
+  { offerId: '1613137', group: 'f6',  form: 'заочна',       title: 'Інформаційні системи та технології', seatsMax: 14, orderLicense: 30, sortOrder: 100 },
+  { offerId: '1588884', group: 'f7',  form: 'заочна',       title: 'Комп\'ютерна інженерія', seatsMax: 13, orderLicense: 20, sortOrder: 120 },
 ];
 
 const uri = process.env.MONGO_URI;
