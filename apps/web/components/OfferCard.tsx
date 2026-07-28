@@ -48,7 +48,8 @@ export function CatRow({ cat }: { cat: CatStat }) {
 }
 
 export default function OfferCard({ offer }: { offer: Offer }) {
-  const hasOfficial = offer.cats.some((c) => c.of != null);
+  // Показуємо офіційні результати тільки після 1 серпня 2026, щоб старі тестові дані не ламали UI
+  const hasOfficial = offer.cats.some((c) => c.of != null) && new Date() > new Date('2026-08-01');
   return (
     <Link href={`/offer/${offer.id}/`} className="card">
       {!offer.parseOk && (
