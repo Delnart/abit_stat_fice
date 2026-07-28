@@ -33,7 +33,8 @@ export default function OfferView({ id }: { id: string }) {
   const myScore = isFinite(parsed) && parsed >= 100 && parsed <= 200 ? parsed : null;
 
   const ahead = myScore != null && rows ? rows.filter((r) => r.score > myScore).length : 0;
-  const hasOfficial = offer?.cats.some((c) => c.of != null) ?? false;
+  // Показуємо офіційні результати тільки після 1 серпня 2026, щоб старі тестові дані не ламали UI
+  const hasOfficial = (offer?.cats.some((c) => c.of != null) ?? false) && new Date() > new Date('2026-08-01');
 
   return (
     <>

@@ -6,12 +6,14 @@ import type { EdboRequest } from './edbo-parser';
 // person_request_status_id ЄДЕБО
 const ACTIVE = new Set([6, 11, 14]);   // Допущено / Рекомендовано (бюджет) / До наказу
 const PENDING = new Set([1, 5]);       // Надійшла з сайту / Зареєстровано
-export const REJECTED = new Set([8, 9, 12]);  // Відмовлено / Скасовано / Виключено
+export const REJECTED = new Set([4, 7, 8, 9, 12]);  // Відмовлено / Скасовано / Виключено
 
 export const STATUS_TEXT: Record<number, string> = {
   1: 'Заява надійшла з сайту',
+  4: 'Скасовано (втрата пріоритету)',
   5: 'Зареєстровано',
   6: 'Допущено',
+  7: 'Відмова',
   8: 'Відмова закладом',
   9: 'Скасовано вступником',
   11: 'Рекомендовано (бюджет)',

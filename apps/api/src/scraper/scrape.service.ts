@@ -61,13 +61,13 @@ export class ScrapeService {
     console.log(`offer ${id}: meta.license=${meta.orderLicense} doc.license=${(doc as any)?.orderLicense} => licenseSeats=${licenseSeats}, contractSeats=${contractSeats}`);
 
     const seatsMax = budgetSeats;
-    let q1 = (doc as any)?.seatsQ1 ?? quotaSeats(seatsMax);
-    let q2 = (doc as any)?.seatsQ2 ?? quotaSeats(seatsMax);
+    let q1 = (doc as any)?.seatsQ1;
+    let q2 = (doc as any)?.seatsQ2;
+    if (q1 == null || q1 === 0) q1 = quotaSeats(seatsMax);
+    if (q2 == null || q2 === 0) q2 = quotaSeats(seatsMax);
     
-    // Забираємо квоти, якщо бюджетних місць немає або якщо це не денна форма
-    // (на заочній та дистанційній зазвичай немає квот)
-    const form = (doc as any)?.form || 'денна';
-    if (seatsMax === 0 || form !== 'денна') {
+    // Забираємо квоти ТІЛЬКИ якщо взагалі немає бюджетних місць
+    if (seatsMax === 0) {
       q1 = 0;
       q2 = 0;
     }
